@@ -1,0 +1,142 @@
+---
+- hosts: hng
+  become: yes
+  vars:
+    postgres_password: Abdulfattah
+  tasks:
+    - name: Ensuring 'hng' user is present
+      user:
+        name: hng
+        state: present
+        groups: sudo
+    - name:
+      file:
+        path: /opt/stage_5b
+        state: directory
+        owner: hng
+        group: hng
+    - name: Clone the repository
+      git:
+        repo: https://github.com/hngprojects/hng_boilerplate_expressjs.git
+        dest: /opt/stage_5b
+        version: devops
+        force: yes
+      become: yes
+      become_user: hng
+    - name: Install boilerplate dependencies
+      apt:
+        name:
+          - build-essential
+          - libpq-dev
+          - python3-dev
+          - nginx
+          - postgresql
+          - postgresql-contrib
+          - rabbitmq-server
+        state: present
+        update_cache: yes
+    - name: INstall Nodejs and npm
+      apt:
+        name:
+          - nodejs
+          - npm
+        state: present
+        update_cache: yes
+    - name: Nstall Nodejs dep
+      npm:
+        path: /opt/stage_5b
+        install: yes
+        npm_config_global: no
+        executable: npm
+      become: yes
+      become_user: hng
+    - name: Install global Typescript and ts-node-dev
+      npm:
+        name:
+          - typescript
+          - ts-node-dev
+        global: yes
+      become: yes
+      become_user: hng
+    - name: Ensureing Postgresql is up and running
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+    - name: Configue postgresql database
+      postgresql_user:
+        name: hng
+        password: Abdulfattah # "{{ postgresql_passwd }}"
+        state: present
+    - name: Create postgres database
+      postgresql_db:
+        name: stage_5b_db
+        owner: hng
+        state: present
+    - name: Svae Postgresqlcredentials to file
+      copy:
+        dest: /var/secrets/pq_pw.txt
+        content: "PG_USER=hng\nPG_PASSWD=Abdulfattah\nPG_DB=stage_5b_db\n"
+        owner: hng
+        mode: '0600'
+    - name: Ensure Rabitmq is running and enabled
+      service:
+        name: rabbitmq-server
+        state: started
+        enabled: yes
+    - name: Start the application
+      shell: |
+        cd /opt/stage_5b
+        npm run build
+        nohup ts-node-dev src/index.ts > /var/log/stage_5b/out.log 2> /var/log/stage_5b/error.log &
+      become: yes
+      become_user: hng
+    - name: Ensure Nginx is running and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+    - name: Configure Nginx to reverse proxy
+      copy:
+        dest: /etc/nginx/sites-available/stage_5b
+        content: |
+          server {
+            listen 80;
+            server_name _;
+
+            location / {
+              proxy_pass http://127.0.0.1:3000;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header x_Forwarded-Proto $scheme;
+            }
+          }
+        notify:
+          - Restart Nginx
+    - name: Enable Nginx site
+      file:
+        path: /var/log/stage_5b
+        state: directory
+        owner: hng
+        group: hng
+        mode: '0755'
+    - name: Ensure error log file exits
+      file:
+        path: /var/log/stage_5b/error.log
+        state: touch
+        owner: hng
+        group: hng
+        mode: '0644'
+    - name: Ensure out logfile exits
+      file:
+        path: /var/log/stage_5b/out.log
+        state: touch
+        owner: hng
+        group: hng
+        mode: '0644'
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
