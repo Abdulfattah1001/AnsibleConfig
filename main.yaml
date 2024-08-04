@@ -14,7 +14,7 @@
         state: directory
         owner: hng
         group: hng
-    -name: Add /opt/stage_5b as safe directory Git
+    - name: Add /opt/stage_5b as safe directory Git
       ansible.builtin.shell:
         cmd: git config --global --add safe.directory /opt/stage_5b
     - name: Clone the repository
