@@ -22,7 +22,6 @@
         version: devops
         force: yes
       become: yes
-      become_user: hng
     - name: Install boilerplate dependencies
       apt:
         name:
@@ -49,7 +48,6 @@
         npm_config_global: no
         executable: npm
       become: yes
-      become_user: hng
     - name: Install global Typescript and ts-node-dev
       npm:
         name:
@@ -57,7 +55,6 @@
           - ts-node-dev
         global: yes
       become: yes
-      become_user: hng
     - name: Ensureing Postgresql is up and running
       service:
         name: postgresql
@@ -90,7 +87,6 @@
         npm run build
         nohup ts-node-dev src/index.ts > /var/log/stage_5b/out.log 2> /var/log/stage_5b/error.log &
       become: yes
-      become_user: hng
     - name: Ensure Nginx is running and enabled
       service:
         name: nginx
