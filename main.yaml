@@ -1,4 +1,3 @@
----
 - hosts: hng
   become: yes
   vars:
@@ -15,6 +14,9 @@
         state: directory
         owner: hng
         group: hng
+    -name: Add /opt/stage_5b as safe directory Git
+      ansible.builtin.shell:
+        cmd: git config --global --add safe.directory /opt/stage_5b
     - name: Clone the repository
       git:
         repo: https://github.com/hngprojects/hng_boilerplate_expressjs.git
